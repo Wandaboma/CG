@@ -1,9 +1,13 @@
 resetCanvas 600 500
 setColor 0 255 0
 drawEllipse ellipse 100 100 200 350
+drawEllipse ellipse1 100 100 200 350
+translate ellipse1 40 40
 saveCanvas 1
 resetCanvas 600 500
 drawPolygon hello 100 100 100 150 200 150 200 100 Bresenham
+drawPolygon hello1 100 100 100 150 200 150 200 100 Bresenham
+rotate hello1 100 100 90
 setColor 255 0 0
 drawCurve curve 50 50 10 100 10 150 50 200 10 250 50 300 B-spline
 saveCanvas 2

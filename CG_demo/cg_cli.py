@@ -25,6 +25,7 @@ if __name__ == '__main__':
             if line[0] == 'resetCanvas':
                 width = int(line[1])
                 height = int(line[2])
+                item_dict = {}
             elif line[0] == 'saveCanvas':
                 save_name = line[1]
                 canvas = np.zeros([height, width, 3], np.uint8)
@@ -33,7 +34,7 @@ if __name__ == '__main__':
                     if item_type == 'line':
                         pixels = alg.draw_line(p_list, algorithm)
                         for x, y in pixels:
-                            canvas[y, x] = color
+                            canvas[height - 1 - y, x] = color
                     elif item_type == 'polygon':
                         pixels = alg.draw_polygon(p_list, algorithm)
                         for x, y in pixels:
@@ -47,7 +48,7 @@ if __name__ == '__main__':
                     elif item_type == 'curve':
                         pixels = alg.draw_curve(p_list, algorithm)
                         for x, y in pixels:
-                            canvas[y, x] = color
+                            canvas[y, x] = color                                
                 Image.fromarray(canvas).save(os.path.join(output_dir, save_name + '.bmp'), 'bmp')
             elif line[0] == 'setColor':
                 pen_color[0] = int(line[1])
@@ -99,5 +100,21 @@ if __name__ == '__main__':
                         i = i + 1
                     i = i + 1
                 item_dict[item_id] = ['curve', p_list, algorithm, np.array(pen_color)]
+            elif line[0] == 'translate':
+                id = line[1]
+                x0 = int(line[2])
+                y0 = int(line[3])
+                item_type, p_list, algorithm, color = item_dict[id]
+                pixels = alg.translate(p_list, x0, y0)
+                item_dict[id] = [item_type, pixels, algorithm, color]
+            elif line[0] == 'rotate':
+                id = line[1]
+                x0 = int(line[2]) 
+                y0 = int(line[3])
+                r = int(line[4])
+                item_type, p_list, algorithm, color = item_dict[id]
+                pixels = alg.rotate(p_list, x0, y0, r)
+                item_dict[id] = [item_type, pixels, algorithm, color]
             line = fp.readline()
-
+            
+            
