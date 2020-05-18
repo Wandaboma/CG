@@ -80,12 +80,13 @@ def draw_line(p_list, algorithm):
 
 
 def draw_polygon(p_list, algorithm):
-    """绘制多边形
+    """绘制多边形 
 
     :param p_list: (list of list of int: [[x0, y0], [x1, y1], [x2, y2], ...]) 多边形的顶点坐标列表
     :param algorithm: (string) 绘制使用的算法，包括'DDA'和'Bresenham'
     :return: (list of list of int: [[x_0, y_0], [x_1, y_1], [x_2, y_2], ...]) 绘制结果的像素点坐标列表
     """
+    " TODO: boundary bug "
     result = []
     for i in range(len(p_list)):
         line = draw_line([p_list[i - 1], p_list[i]], algorithm)
@@ -226,11 +227,9 @@ def rotate(p_list, x, y, r):
     cost = math.cos(math.pi * r / 180)
     for i in range(len(p_list)):
         x0, y0 = p_list[i]
-        x0 = x + (x0 - x) * cost - (y0 - y) * sint
-        y0 = y + (x0 - x) * sint + (y0 - y) * cost
-        print(x0)
-        print(y0)
-        result.append((int(x0), int(y0)))
+        x1 = x + (x0 - x) * cost - (y0 - y) * sint
+        y1 = y + (x0 - x) * sint + (y0 - y) * cost
+        result.append((int(x1), int(y1)))
     return result
 
 
@@ -243,7 +242,13 @@ def scale(p_list, x, y, s):
     :param s: (float) 缩放倍数
     :return: (list of list of int: [[x_0, y_0], [x_1, y_1], [x_2, y_2], ...]) 变换后的图元参数
     """
-    pass
+    result = []
+    for i in range(len(p_list)):
+        x0, y0 = p_list[i]
+        x1 = x0 * s + x * (1 - s)
+        y1 = y0 * s + y * (1 - s)
+        result.append((int(x1), int(y1)))
+    return result
 
 
 def clip(p_list, x_min, y_min, x_max, y_max, algorithm):

@@ -115,6 +115,23 @@ if __name__ == '__main__':
                 item_type, p_list, algorithm, color = item_dict[id]
                 pixels = alg.rotate(p_list, x0, y0, r)
                 item_dict[id] = [item_type, pixels, algorithm, color]
+            elif line[0] == 'scale':
+                id = line[1]
+                x0 = int(line[2])
+                y0 = int(line[3])
+                s = float(line[4])
+                item_type, p_list, algorithm, color = item_dict[id]
+                pixels = alg.scale(p_list, x0, y0, s)
+                item_dict[id] = [item_type, pixels, algorithm, color]
+            elif line[0] == 'clip':
+                id = line[1]
+                x0 = int(line[2])
+                y0 = int(line[3])
+                x1 = int(line[4])
+                y1 = int(line[5])
+                clip_algo = line[6]
+                item_type, p_list, algorithm, color = item_dict[id]
+                pixels = alg.clip(p_list, x0, y0, x1, y1, clip_algo)
+                item_dict[id] = [item_type, pixels, algorithm, color]
             line = fp.readline()
-            
             
