@@ -7,8 +7,8 @@ translate ellipse1 40 40
 saveCanvas 1
 resetCanvas 600 500
 drawPolygon hello 100 100 100 150 200 150 200 100 Bresenham
-drawPolygon hello1 100 100 100 150 200 150 200 100 Bresenham
-scale hello1 100 100 0.5
+drawLine line 100 50 200 300 DDA
+clip line 100 100 200 150 Cohen-Sutherland
 setColor 255 0 0
 drawCurve curve 50 50 10 100 10 150 50 200 10 250 50 300 B-spline
 saveCanvas 2

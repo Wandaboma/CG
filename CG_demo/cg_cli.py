@@ -38,17 +38,17 @@ if __name__ == '__main__':
                     elif item_type == 'polygon':
                         pixels = alg.draw_polygon(p_list, algorithm)
                         for x, y in pixels:
-                            canvas[y, x] = color
+                            canvas[height - 1 - y, x] = color
                     elif item_type == 'ellipse':
                         pixels = alg.draw_ellipse(p_list)
                         for x, y in pixels:
                             x = int(x)
                             y = int(y)
-                            canvas[y, x] = color
+                            canvas[height - 1 - y, x] = color
                     elif item_type == 'curve':
                         pixels = alg.draw_curve(p_list, algorithm)
                         for x, y in pixels:
-                            canvas[y, x] = color                                
+                            canvas[height - 1 - y, x] = color                                
                 Image.fromarray(canvas).save(os.path.join(output_dir, save_name + '.bmp'), 'bmp')
             elif line[0] == 'setColor':
                 pen_color[0] = int(line[1])

@@ -250,7 +250,29 @@ def scale(p_list, x, y, s):
         result.append((int(x1), int(y1)))
     return result
 
-
+def getCode(x, y, x_min, y_min, x_max, y_max):
+    code = 0
+    if x < x_min:
+        code = code | 0x01
+    else:
+        code = code & 0xfe
+    
+    if x > x_max:
+        code = code | 0x02
+    else:
+        code = code & 0xfd
+    
+    if y < y_min:
+        code = code | 0x04
+    else:
+        code = code & 0xfb
+    
+    if y > y_max:
+        code = code | 0x08
+    else:
+        code = code & 0xf7
+    return code
+    
 def clip(p_list, x_min, y_min, x_max, y_max, algorithm):
     """线段裁剪
 
@@ -262,4 +284,51 @@ def clip(p_list, x_min, y_min, x_max, y_max, algorithm):
     :param algorithm: (string) 使用的裁剪算法，包括'Cohen-Sutherland'和'Liang-Barsky'
     :return: (list of list of int: [[x_0, y_0], [x_1, y_1]]) 裁剪后线段的起点和终点坐标
     """
-    pass
+    result = []
+    x0, y0 = p_list[0]
+    x1, y1 = p_list[1]
+    if algorithm == 'Cohen-Sutherland':
+        done = False
+        c1 = getCode(x0, y0, x_min, y_min, x_max, y_max)
+        c2 = getCode(x1, y1, x_min, y_min, x_max, y_max)
+        while not done:
+            if c1 == 0 and c2 == 0:
+                result.append((x0, y0))
+                result.append((x1, y1))
+                done = True
+            elif c1 & c2 != 0:
+                result.append(0, 0)
+                result.append(0, 0)
+                done = True
+            else:
+                if c1 != 0:
+                    code = c1
+                else: 
+                    code = c2
+                if code & 0x01 != 0:
+                    x = x_min
+                    m = (y1 - y0) / (x1 - x0)
+                    y = y0 + int((x - x0) * m)
+                elif code & 0x08 != 0:
+                    y = y_max
+                    m = (x1 - x0) / (y1 - y0)
+                    x = x0 + int((y - y0) * m)
+                elif code & 0x02 != 0:
+                    x = x_max
+                    m = (y1 - y0) / (x1 - x0)
+                    y = y0 + int((x - x0) * m)
+                elif code & 0x04 != 0:
+                    y = y_min
+                    m = (x1 - x0) / (y1 - y0)
+                    x = x0 + int((y - y0) * m)
+                if code == c1:
+                    x0 = x
+                    y0 = y
+                    c1 = getCode(x0, y0, x_min, y_min, x_max, y_max)
+                else:
+                    x1 = x
+                    y1 = y
+                    c2 = getCode(x1, y1, x_min, y_min, x_max, y_max)
+    else:
+        print("Hello")
+    return result
