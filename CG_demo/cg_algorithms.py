@@ -38,6 +38,8 @@ def draw_line(p_list, algorithm):
             length = abs(x1 - x0) * 1.0
         else:
             length = abs(y1 - y0) * 1.0
+        if length == 0:
+            return result
         delt_x = (x1 - x0) / length
         delt_y = (y1 - y0) / length
         x = x0 + 0.5
@@ -273,6 +275,29 @@ def getCode(x, y, x_min, y_min, x_max, y_max):
         code = code & 0xf7
     return code
     
+u1 = 0.0
+u2 = 1.0
+def clipTest(p, q):
+    global u1, u2
+    flag = True
+    if p < 0.0:
+        r = q * 1.0 / p
+        if r > u2:
+            flag = False
+        elif r > u1:
+            u1 = r
+            flag = True
+    elif p > 0:
+        r = q * 1.0 / p
+        if r < u1:
+            flag = True
+        elif r < u2:
+            u2 = r
+            flag = True
+    elif q < 0:
+        flag = False
+    return flag
+    
 def clip(p_list, x_min, y_min, x_max, y_max, algorithm):
     """线段裁剪
 
@@ -330,5 +355,20 @@ def clip(p_list, x_min, y_min, x_max, y_max, algorithm):
                     y1 = y
                     c2 = getCode(x1, y1, x_min, y_min, x_max, y_max)
     else:
-        print("Hello")
+        dx = x1 - x0
+        global u1, u2
+        u1 = 0.0
+        u2 = 1.0
+        if  clipTest(-dx, x0 - x_min):
+            if clipTest(dx, x_max - x0):
+                dy = y1 - y0
+                if clipTest(-dy, y0 - y_min):
+                    if clipTest(dy, y_max - y0):
+                        x = x0 + u1 * dx
+                        y = y0 + u1 * dy
+                        result.append((int(x), int(y)))
+                        x = x0 + u2 * dx
+                        y = y0 + u2 * dy
+                        result.append((int(x), int(y)))
+                        
     return result
