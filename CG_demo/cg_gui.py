@@ -14,7 +14,8 @@ from PyQt5.QtWidgets import (
     QListWidget,
     QHBoxLayout,
     QWidget,
-    QStyleOptionGraphicsItem)
+    QStyleOptionGraphicsItem,
+    QPushButton)
 from PyQt5.QtGui import QPainter, QMouseEvent, QColor
 from PyQt5.QtCore import QRectF
 
@@ -34,6 +35,12 @@ class MyCanvas(QGraphicsView):
         self.temp_algorithm = ''
         self.temp_id = ''
         self.temp_item = None
+        
+        self.x0 = 0
+        self.y0 = 0
+        self.y1 = 0
+        self.y2 = 0
+        self.origin_list = []
 
     def start_draw_line(self, algorithm, item_id):
         self.status = 'line'
@@ -44,6 +51,24 @@ class MyCanvas(QGraphicsView):
         self.status = 'polygon'
         self.temp_algorithm = algorithm
         self.temp_id = item_id
+        
+    def start_draw_ellipse(self, item_id):
+        self.status = 'ellipse'
+        self.temp_id = item_id
+        
+    def start_draw_curve(self, algorithm, item_id):
+        self.status = 'curve'
+        self.temp_algorithm = algorithm
+        self.temp_id = item_id
+        
+    def finish_draw_curve(self, item_id):
+        self.item_dict[item_id] = self.temp_item
+        self.list_widget.addItem(item_id)
+        self.temp_item = None
+        self.finish_draw()
+        
+    def start_translate(self):
+        self.status = 'translate'
         
     def finish_draw(self):
         self.temp_id = self.main_window.get_id()
@@ -72,6 +97,7 @@ class MyCanvas(QGraphicsView):
             self.temp_item = MyItem(self.temp_id, self.status, [[x, y], [x, y]], self.temp_algorithm)
             self.scene().addItem(self.temp_item)
         elif self.status == 'polygon':
+            #TODO: change into movement
             if self.temp_item == None:
                 self.temp_item = MyItem(self.temp_id, self.status, [[x, y], [x, y]], self.temp_algorithm)
                 self.scene().addItem(self.temp_item)
@@ -79,7 +105,7 @@ class MyCanvas(QGraphicsView):
                 flag = False
                 for i in range(len(self.temp_item.p_list)):
                     x0, y0 = self.temp_item.p_list[i]
-                    if (x - x0) * (x - x0) + (y - y0) * (y - y0) < 20:
+                    if (x - x0) * (x - x0) + (y - y0) * (y - y0) < 30:
                         flag = True
                 if flag:
                     self.item_dict[self.temp_id] = self.temp_item
@@ -88,7 +114,20 @@ class MyCanvas(QGraphicsView):
                     self.finish_draw()
                 else: 
                     self.temp_item.p_list.append((x, y))
-                
+        elif self.status == 'ellipse':
+            self.temp_item = MyItem(self.temp_id, self.status, [[x, y], [x, y]], self.temp_algorithm)
+            self.scene().addItem(self.temp_item)
+        elif self.status == 'curve':
+            if self.temp_item == None:
+                self.temp_item = MyItem(self.temp_id, self.status, [[x, y]], self.temp_algorithm)
+                self.scene().addItem(self.temp_item)
+            else:
+                self.temp_item.p_list.append((x, y))
+        elif self.status == 'translate':
+            if self.selected_id != '':
+                self.x0 = x
+                self.y0 = y  
+                self.origin_list = self.item_dict[self.selected_id].p_list
         self.updateScene([self.sceneRect()])
         super().mousePressEvent(event)
 
@@ -98,11 +137,21 @@ class MyCanvas(QGraphicsView):
         y = int(pos.y())
         if self.status == 'line':
             self.temp_item.p_list[1] = [x, y]
+        elif self.status == 'ellipse':
+            self.temp_item.p_list[1] = [x, y]
+        elif self.status == 'translate':
+            if self.selected_id != '':
+                temp_list = alg.translate(self.origin_list, x - self.x0, y - self.y0)
+                self.item_dict[self.selected_id].p_list = temp_list
         self.updateScene([self.sceneRect()])
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:
         if self.status == 'line':
+            self.item_dict[self.temp_id] = self.temp_item
+            self.list_widget.addItem(self.temp_id)
+            self.finish_draw()
+        elif self.status == 'ellipse':
             self.item_dict[self.temp_id] = self.temp_item
             self.list_widget.addItem(self.temp_id)
             self.finish_draw()
@@ -145,10 +194,20 @@ class MyItem(QGraphicsItem):
                 painter.setPen(QColor(255, 0, 0))
                 painter.drawRect(self.boundingRect())
         elif self.item_type == 'ellipse':
-            pass
+            item_pixels = alg.draw_ellipse(self.p_list)
+            for p in item_pixels:
+                painter.drawPoint(*p)
+            if self.selected:
+                painter.setPen(QColor(255, 0, 0))
+                painter.drawRect(self.boundingRect())
         elif self.item_type == 'curve':
-            pass
-
+            item_pixels = alg.draw_curve(self.p_list, self.algorithm)
+            for p in item_pixels:
+                painter.drawPoint(*p)
+            if self.selected:
+                painter.setPen(QColor(255, 0, 0))
+                painter.drawRect(self.boundingRect())
+                
     def boundingRect(self) -> QRectF:
         if self.item_type == 'line':
             x0, y0 = self.p_list[0]
@@ -158,7 +217,8 @@ class MyItem(QGraphicsItem):
             w = max(x0, x1) - x
             h = max(y0, y1) - y
             return QRectF(x - 1, y - 1, w + 2, h + 2)
-        elif self.item_type == 'polygon':
+        else:
+     #   elif self.item_type == 'polygon':
             x = 1000
             y = 1000
             for i in range(len(self.p_list)):
@@ -174,10 +234,10 @@ class MyItem(QGraphicsItem):
             w = w - x
             h = h - y
             return QRectF(x - 1, y - 1, w + 2, h + 2)
-        elif self.item_type == 'ellipse':
-            pass
-        elif self.item_type == 'curve':
-            pass
+        #elif self.item_type == 'ellipse':
+        #    pass
+        #elif self.item_type == 'curve':
+        #    pass
 
 
 class MainWindow(QMainWindow):
@@ -200,6 +260,10 @@ class MainWindow(QMainWindow):
         self.canvas_widget.main_window = self
         self.canvas_widget.list_widget = self.list_widget
 
+        #confirm button
+        self.btn = QPushButton('OK', self)
+        self.btn.setFixedSize(40, 30)
+        
         # 设置菜单栏
         menubar = self.menuBar()
         file_menu = menubar.addMenu('文件')
@@ -233,12 +297,19 @@ class MainWindow(QMainWindow):
         line_bresenham_act.triggered.connect(self.line_bresenham_action)
         polygon_dda_act.triggered.connect(self.polygon_dda_action)
         polygon_bresenham_act.triggered.connect(self.polygon_bresenham_action)
+        ellipse_act.triggered.connect(self.ellipse_action)
+        curve_bezier_act.triggered.connect(self.curve_bezier_action)
+        curve_b_spline_act.triggered.connect(self.curve_b_spline_action)
+        translate_act.triggered.connect(self.translate_action)
         self.list_widget.currentTextChanged.connect(self.canvas_widget.selection_changed)
-
+        self.btn.clicked.connect(self.on_click)
+        
         # 设置主窗口的布局
         self.hbox_layout = QHBoxLayout()
         self.hbox_layout.addWidget(self.canvas_widget)
         self.hbox_layout.addWidget(self.list_widget, stretch=1)
+        #TODO: move button to down below
+        self.hbox_layout.addWidget(self.btn)
         self.central_widget = QWidget()
         self.central_widget.setLayout(self.hbox_layout)
         self.setCentralWidget(self.central_widget)
@@ -250,7 +321,11 @@ class MainWindow(QMainWindow):
         _id = str(self.item_cnt)
         self.item_cnt += 1
         return _id
-
+    
+    def get_present_id(self):
+        _id = str(self.item_cnt)
+        return _id 
+        
     def line_naive_action(self):
         self.canvas_widget.start_draw_line('Naive', self.get_id())
         self.statusBar().showMessage('Naive算法绘制线段')
@@ -280,6 +355,31 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage('Bresenham算法绘制多边形')
         self.list_widget.clearSelection()
         self.canvas_widget.clear_selection()
+        
+    def ellipse_action(self):
+        self.canvas_widget.start_draw_ellipse(self.get_id())
+        self.statusBar().showMessage('绘制椭圆')
+        self.list_widget.clearSelection()
+        self.canvas_widget.clear_selection()
+
+    def curve_bezier_action(self):
+        self.canvas_widget.start_draw_curve('Bezier', self.get_id())
+        self.statusBar().showMessage('Bezier算法绘制曲线')
+        self.list_widget.clearSelection()
+        self.canvas_widget.clear_selection()
+    
+    def curve_b_spline_action(self):
+        self.canvas_widget.start_draw_curve('B-spline', self.get_id())
+        self.statusBar().showMessage('B-spline算法绘制曲线')
+        self.list_widget.clearSelection()
+        self.canvas_widget.clear_selection()
+    
+    def translate_action(self):
+        self.canvas_widget.start_translate()
+        self.statusBar().showMessage('图元平移')
+
+    def on_click(self):
+        self.canvas_widget.finish_draw_curve(self.get_present_id())
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)

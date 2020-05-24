@@ -168,8 +168,8 @@ def draw_curve(p_list, algorithm):
     result = []
     if algorithm == 'Bezier':
         n = len(p_list) - 1
-        for i in range(0, 1000):
-            t = i / 1000.0
+        for i in range(0, 10000):
+            t = i / 10000.0
             x = 0
             y = 0
             for j in range(len(p_list)):
@@ -180,7 +180,7 @@ def draw_curve(p_list, algorithm):
             result.append((int(x),int(y)))
     else:
         for i in range(len(p_list) - 3):
-            delta = 0.01
+            delta = 0.0001
             t = 0
             while t <= 1:
                 b0 = 1 / 6.0 * (1 - t) * (1 - t) * (1 - t)
