@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
 
+import math
 import sys
 import cg_algorithms as alg
 from typing import Optional
@@ -15,7 +16,8 @@ from PyQt5.QtWidgets import (
     QHBoxLayout,
     QWidget,
     QStyleOptionGraphicsItem,
-    QPushButton)
+    QPushButton,
+    QColorDialog)
 from PyQt5.QtGui import QPainter, QMouseEvent, QColor
 from PyQt5.QtCore import QRectF
 
@@ -38,8 +40,8 @@ class MyCanvas(QGraphicsView):
         
         self.x0 = 0
         self.y0 = 0
+        self.x1 = 0
         self.y1 = 0
-        self.y2 = 0
         self.origin_list = []
 
     def start_draw_line(self, algorithm, item_id):
@@ -69,6 +71,16 @@ class MyCanvas(QGraphicsView):
         
     def start_translate(self):
         self.status = 'translate'
+        
+    def start_rotate(self):
+        self.status = 'rotate'
+    
+    def start_scale(self):
+        self.status = 'scale'
+        
+    def start_clip(self, algorithm):
+        self.status = 'clip'
+        self.temp_algorithm = algorithm
         
     def finish_draw(self):
         self.temp_id = self.main_window.get_id()
@@ -123,11 +135,12 @@ class MyCanvas(QGraphicsView):
                 self.scene().addItem(self.temp_item)
             else:
                 self.temp_item.p_list.append((x, y))
-        elif self.status == 'translate':
+        else:
             if self.selected_id != '':
                 self.x0 = x
                 self.y0 = y  
-                self.origin_list = self.item_dict[self.selected_id].p_list
+                self.origin_list = self.item_dict[self.selected_id].p_list    
+            
         self.updateScene([self.sceneRect()])
         super().mousePressEvent(event)
 
@@ -143,6 +156,23 @@ class MyCanvas(QGraphicsView):
             if self.selected_id != '':
                 temp_list = alg.translate(self.origin_list, x - self.x0, y - self.y0)
                 self.item_dict[self.selected_id].p_list = temp_list
+        elif self.status == 'rotate':
+            if self.selected_id != '':
+                if y != self.y0:
+                    theta = math.atan(1.0 * (x - self.x0) / (y - self.y0)) * 180 / math.pi
+                    temp_list = alg.rotate(self.origin_list, self.x0, self.y0, -int(theta))
+                    self.item_dict[self.selected_id].p_list = temp_list
+        elif self.status == 'scale':
+            if self.selected_id != '':
+                t = ((x - self.x0) * (x - self.x0) + (y - self.y0) * (y - self.y0)) ** 0.5    
+                t = t / 30
+                temp_list = alg.scale(self.origin_list, self.x0, self.y0, t)
+                self.item_dict[self.selected_id].p_list = temp_list
+        elif self.status == 'clip':
+            if self.selected_id != '':
+                self.x1 = x
+                self.y1 = y
+            
         self.updateScene([self.sceneRect()])
         super().mouseMoveEvent(event)
 
@@ -155,6 +185,11 @@ class MyCanvas(QGraphicsView):
             self.item_dict[self.temp_id] = self.temp_item
             self.list_widget.addItem(self.temp_id)
             self.finish_draw()
+        elif self.status == 'clip':
+            if self.selected_id != '':
+                temp_list = alg.clip(self.origin_list, self.x0, self.y0, self.x1, self.y1, self.temp_algorithm)
+                self.item_dict[self.selected_id].p_list = temp_list
+        self.updateScene([self.sceneRect()])
         super().mouseReleaseEvent(event)
 
 
@@ -209,35 +244,21 @@ class MyItem(QGraphicsItem):
                 painter.drawRect(self.boundingRect())
                 
     def boundingRect(self) -> QRectF:
-        if self.item_type == 'line':
-            x0, y0 = self.p_list[0]
-            x1, y1 = self.p_list[1]
-            x = min(x0, x1)
-            y = min(y0, y1)
-            w = max(x0, x1) - x
-            h = max(y0, y1) - y
-            return QRectF(x - 1, y - 1, w + 2, h + 2)
-        else:
-     #   elif self.item_type == 'polygon':
-            x = 1000
-            y = 1000
-            for i in range(len(self.p_list)):
-                x0, y0 = self.p_list[i]
-                x = min(x0, x)
-                y = min(y0, y)
-            w = 0
-            h = 0
-            for i in range(len(self.p_list)):
-                x0, y0 = self.p_list[i]
-                w = max(w, x0)
-                h = max(h, y0)
-            w = w - x
-            h = h - y
-            return QRectF(x - 1, y - 1, w + 2, h + 2)
-        #elif self.item_type == 'ellipse':
-        #    pass
-        #elif self.item_type == 'curve':
-        #    pass
+        x = 1000
+        y = 1000
+        for i in range(len(self.p_list)):
+            x0, y0 = self.p_list[i]
+            x = min(x0, x)
+            y = min(y0, y)
+        w = 0
+        h = 0
+        for i in range(len(self.p_list)):
+            x0, y0 = self.p_list[i]
+            w = max(w, x0)
+            h = max(h, y0)
+        w = w - x
+        h = h - y
+        return QRectF(x - 1, y - 1, w + 2, h + 2)
 
 
 class MainWindow(QMainWindow):
@@ -269,6 +290,7 @@ class MainWindow(QMainWindow):
         file_menu = menubar.addMenu('文件')
         set_pen_act = file_menu.addAction('设置画笔')
         reset_canvas_act = file_menu.addAction('重置画布')
+        save_canvas_act = file_menu.addAction('保存画布')
         exit_act = file_menu.addAction('退出')
         draw_menu = menubar.addMenu('绘制')
         line_menu = draw_menu.addMenu('线段')
@@ -292,6 +314,7 @@ class MainWindow(QMainWindow):
 
         # 连接信号和槽函数
         exit_act.triggered.connect(qApp.quit)
+        set_pen_act.triggered.connect(self.set_pen_action)
         line_naive_act.triggered.connect(self.line_naive_action)
         line_dda_act.triggered.connect(self.line_dda_action)
         line_bresenham_act.triggered.connect(self.line_bresenham_action)
@@ -301,6 +324,10 @@ class MainWindow(QMainWindow):
         curve_bezier_act.triggered.connect(self.curve_bezier_action)
         curve_b_spline_act.triggered.connect(self.curve_b_spline_action)
         translate_act.triggered.connect(self.translate_action)
+        rotate_act.triggered.connect(self.rotate_action)
+        scale_act.triggered.connect(self.scale_action)
+        clip_cohen_sutherland_act.triggered.connect(self.clip_cohen_sutherland_action)
+        clip_liang_barsky_act.triggered.connect(self.clip_liang_barsky_action)
         self.list_widget.currentTextChanged.connect(self.canvas_widget.selection_changed)
         self.btn.clicked.connect(self.on_click)
         
@@ -325,6 +352,16 @@ class MainWindow(QMainWindow):
     def get_present_id(self):
         _id = str(self.item_cnt)
         return _id 
+        
+    def set_pen_action(self):
+        col = QColorDialog.getColor()
+        if col.isValid():
+            print(col.name())
+            a = int(col.name(), 16)
+            print(a)
+            b = hex(a)
+            print(b)
+            QPainter.setPen(QColor(col.red(), col.green(), col.blue()))
         
     def line_naive_action(self):
         self.canvas_widget.start_draw_line('Naive', self.get_id())
@@ -377,7 +414,23 @@ class MainWindow(QMainWindow):
     def translate_action(self):
         self.canvas_widget.start_translate()
         self.statusBar().showMessage('图元平移')
+        
+    def rotate_action(self):
+        self.canvas_widget.start_rotate()
+        self.statusBar().showMessage('图元旋转')
 
+    def scale_action(self):
+        self.canvas_widget.start_scale()
+        self.statusBar().showMessage('图元缩放')
+        
+    def clip_cohen_sutherland_action(self):
+        self.canvas_widget.start_clip('Cohen-Sutherland')
+        self.statusBar().showMessage('Cohen-Sutherland算法对线段裁剪')
+        
+    def clip_liang_barsky_action(self):
+        self.canvas_widget.start_clip('Liang-Barsky')
+        self.statusBar().showMessage('Liang-Barsky算法对线段裁剪') 
+        
     def on_click(self):
         self.canvas_widget.finish_draw_curve(self.get_present_id())
 

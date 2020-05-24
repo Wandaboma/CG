@@ -322,8 +322,8 @@ def clip(p_list, x_min, y_min, x_max, y_max, algorithm):
                 result.append((x1, y1))
                 done = True
             elif c1 & c2 != 0:
-                result.append(0, 0)
-                result.append(0, 0)
+                result.append((0, 0))
+                result.append((0, 0))
                 done = True
             else:
                 if c1 != 0:
@@ -370,5 +370,7 @@ def clip(p_list, x_min, y_min, x_max, y_max, algorithm):
                         x = x0 + u2 * dx
                         y = y0 + u2 * dy
                         result.append((int(x), int(y)))
-                        
+                        return result
+        result.append((0, 0))
+        result.append((0, 0))
     return result
