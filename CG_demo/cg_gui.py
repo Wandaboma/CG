@@ -17,9 +17,10 @@ from PyQt5.QtWidgets import (
     QWidget,
     QStyleOptionGraphicsItem,
     QPushButton,
-    QColorDialog)
-from PyQt5.QtGui import QPainter, QMouseEvent, QColor
-from PyQt5.QtCore import QRectF
+    QColorDialog,
+    QFileDialog)
+from PyQt5.QtGui import QPainter, QMouseEvent, QColor, QPixmap, QImage
+from PyQt5.QtCore import QRectF, QSize
 
 
 class MyCanvas(QGraphicsView):
@@ -37,6 +38,7 @@ class MyCanvas(QGraphicsView):
         self.temp_algorithm = ''
         self.temp_id = ''
         self.temp_item = None
+        self.col = QColor(0, 0, 0)
         
         self.x0 = 0
         self.y0 = 0
@@ -44,6 +46,19 @@ class MyCanvas(QGraphicsView):
         self.y1 = 0
         self.origin_list = []
 
+    def start_change_color(self, color):
+        self.col = color
+    
+    def start_reset_canvas(self):
+        self.scene().clear()
+        self.list_widget.clear()
+        self.item_dict = {}
+        self.main_window.reset_id()
+    
+    def start_save_canvas(self):
+        filename = QFileDialog.getSaveFileName(self, 'Choose File', '', 'Image (*.jpg *.png *.bmp)')
+        self.grab(self.sceneRect().toRect()).save(filename[0])
+        
     def start_draw_line(self, algorithm, item_id):
         self.status = 'line'
         self.temp_algorithm = algorithm
@@ -106,12 +121,12 @@ class MyCanvas(QGraphicsView):
         x = int(pos.x())
         y = int(pos.y())
         if self.status == 'line':
-            self.temp_item = MyItem(self.temp_id, self.status, [[x, y], [x, y]], self.temp_algorithm)
+            self.temp_item = MyItem(self.col, self.temp_id, self.status, [[x, y], [x, y]], self.temp_algorithm)
             self.scene().addItem(self.temp_item)
         elif self.status == 'polygon':
             #TODO: change into movement
             if self.temp_item == None:
-                self.temp_item = MyItem(self.temp_id, self.status, [[x, y], [x, y]], self.temp_algorithm)
+                self.temp_item = MyItem(self.col, self.temp_id, self.status, [[x, y], [x, y]], self.temp_algorithm)
                 self.scene().addItem(self.temp_item)
             else:
                 flag = False
@@ -127,11 +142,11 @@ class MyCanvas(QGraphicsView):
                 else: 
                     self.temp_item.p_list.append((x, y))
         elif self.status == 'ellipse':
-            self.temp_item = MyItem(self.temp_id, self.status, [[x, y], [x, y]], self.temp_algorithm)
+            self.temp_item = MyItem(self.col, self.temp_id, self.status, [[x, y], [x, y]], self.temp_algorithm)
             self.scene().addItem(self.temp_item)
         elif self.status == 'curve':
             if self.temp_item == None:
-                self.temp_item = MyItem(self.temp_id, self.status, [[x, y]], self.temp_algorithm)
+                self.temp_item = MyItem(self.col, self.temp_id, self.status, [[x, y]], self.temp_algorithm)
                 self.scene().addItem(self.temp_item)
             else:
                 self.temp_item.p_list.append((x, y))
@@ -197,7 +212,7 @@ class MyItem(QGraphicsItem):
     """
     自定义图元类，继承自QGraphicsItem
     """
-    def __init__(self, item_id: str, item_type: str, p_list: list, algorithm: str = '', parent: QGraphicsItem = None):
+    def __init__(self, item_color: QColor, item_id: str, item_type: str, p_list: list, algorithm: str = '', parent: QGraphicsItem = None):
         """
 
         :param item_id: 图元ID
@@ -207,6 +222,7 @@ class MyItem(QGraphicsItem):
         :param parent:
         """
         super().__init__(parent)
+        self.col = item_color
         self.id = item_id           # 图元ID
         self.item_type = item_type  # 图元类型，'line'、'polygon'、'ellipse'、'curve'等
         self.p_list = p_list        # 图元参数
@@ -214,6 +230,7 @@ class MyItem(QGraphicsItem):
         self.selected = False
 
     def paint(self, painter: QPainter, option: QStyleOptionGraphicsItem, widget: Optional[QWidget] = ...) -> None:
+        painter.setPen(self.col)
         if self.item_type == 'line':
             item_pixels = alg.draw_line(self.p_list, self.algorithm)
             for p in item_pixels:
@@ -315,6 +332,8 @@ class MainWindow(QMainWindow):
         # 连接信号和槽函数
         exit_act.triggered.connect(qApp.quit)
         set_pen_act.triggered.connect(self.set_pen_action)
+        reset_canvas_act.triggered.connect(self.reset_canvas_action)
+        save_canvas_act.triggered.connect(self.save_canvas_action)
         line_naive_act.triggered.connect(self.line_naive_action)
         line_dda_act.triggered.connect(self.line_dda_action)
         line_bresenham_act.triggered.connect(self.line_bresenham_action)
@@ -344,6 +363,9 @@ class MainWindow(QMainWindow):
         self.resize(600, 600)
         self.setWindowTitle('CG Demo')
 
+    def reset_id(self):
+        self.item_cnt = 0
+        
     def get_id(self):
         _id = str(self.item_cnt)
         self.item_cnt += 1
@@ -356,13 +378,14 @@ class MainWindow(QMainWindow):
     def set_pen_action(self):
         col = QColorDialog.getColor()
         if col.isValid():
-            print(col.name())
-            a = int(col.name(), 16)
-            print(a)
-            b = hex(a)
-            print(b)
-            QPainter.setPen(QColor(col.red(), col.green(), col.blue()))
-        
+            self.canvas_widget.start_change_color(col)
+     
+    def reset_canvas_action(self):
+        self.canvas_widget.start_reset_canvas()
+    
+    def save_canvas_action(self):
+        self.canvas_widget.start_save_canvas()
+    
     def line_naive_action(self):
         self.canvas_widget.start_draw_line('Naive', self.get_id())
         self.statusBar().showMessage('Naive算法绘制线段')
