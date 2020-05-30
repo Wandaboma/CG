@@ -18,7 +18,13 @@ from PyQt5.QtWidgets import (
     QStyleOptionGraphicsItem,
     QPushButton,
     QColorDialog,
-    QFileDialog)
+    QFileDialog,
+    QInputDialog,
+    QDialog,
+    QFormLayout,
+    QLabel,
+    QSpinBox,
+    QDialogButtonBox)
 from PyQt5.QtGui import QPainter, QMouseEvent, QColor, QPixmap, QImage
 from PyQt5.QtCore import QRectF, QSize
 
@@ -382,6 +388,29 @@ class MainWindow(QMainWindow):
      
     def reset_canvas_action(self):
         self.canvas_widget.start_reset_canvas()
+        dialog = QDialog()
+        form = QFormLayout(dialog)
+        box1 = QSpinBox(dialog)
+        box1.setRange(1, 1000)
+        box2 = QSpinBox(dialog)
+        box2.setRange(1, 1000)
+        form.addRow('Width:', box1)
+        form.addRow('Height:', box2)
+        buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttonBox.accepted.connect(dialog.accept)
+        buttonBox.rejected.connect(dialog.reject)
+        form.addRow(buttonBox)
+        
+        if dialog.exec():
+            self.w = box1.value()
+            self.h = box2.value()
+            self.scene.setSceneRect(0, 0, self.w, self.h)
+            self.canvas_widget.resize(self.w,self.h)
+            self.canvas_widget.setFixedSize(self.w, self.h)
+            self.statusBar().showMessage('空闲')
+            self.setMaximumHeight(self.h)
+            self.setMaximumWidth(self.w)
+            self.resize(self.w, self.h)
     
     def save_canvas_action(self):
         self.canvas_widget.start_save_canvas()
