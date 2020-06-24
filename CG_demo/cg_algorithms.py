@@ -95,7 +95,46 @@ def draw_polygon(p_list, algorithm):
         result += line
     return result
 
-
+tag = []
+result = []
+def boundary_fill(x, y, b_list):
+    flag = True
+    if x < 0 or y < 0 or x > 1000 or y > 1000:
+        print("Hello")
+        flag = False
+    if tag[x * 1000 + y] == 1:
+        flag = False
+    if flag == True:
+        tag[x * 1000 + y] == 1
+        for i in range(len(b_list)):
+            x0, y0 = b_list[i]
+            if x0 == x and y0 == y:
+                flag = False
+                break
+    if flag == True:
+        global result
+        result.append((x, y))
+        boundary_fill(x + 1, y, b_list)
+        boundary_fill(x - 1, y, b_list)
+        boundary_fill(x, y + 1, b_list)
+        boundary_fill(x, y - 1, b_list)
+    
+def fill(p_list, f_list, b_list):
+    """fill polygon
+    
+    : param p_list (list of list of int: [[x0, y0], [x1, y1], [x2, y2], ...]) 多边形的顶点坐标列表
+    : param f_list (list of list of int: [[x0, y0]]) where the fill starts
+    : param b_list (list of list of int: [[x0, y0], [x1, y1], [x2, y2], ...]) boundary list
+    :return: (list of list of int: [[x_0, y_0], [x_1, y_1], [x_2, y_2], ...]) 绘制结果的像素点坐标列表
+    """
+    x, y = f_list[0]
+    global tag
+    for i in range(0, 1001):
+        for j in range(0, 1001):
+            tag.append(0)
+    boundary_fill(x, y, b_list)
+    return result
+    
 def draw_ellipse(p_list):
     """绘制椭圆（采用中点圆生成算法）
 
