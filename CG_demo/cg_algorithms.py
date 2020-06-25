@@ -95,44 +95,123 @@ def draw_polygon(p_list, algorithm):
         result += line
     return result
 
-tag = []
-result = []
-def boundary_fill(x, y, b_list):
-    flag = True
-    if x < 0 or y < 0 or x > 1000 or y > 1000:
-        print("Hello")
-        flag = False
-    if tag[x * 1000 + y] == 1:
-        flag = False
-    if flag == True:
-        tag[x * 1000 + y] == 1
-        for i in range(len(b_list)):
-            x0, y0 = b_list[i]
-            if x0 == x and y0 == y:
-                flag = False
-                break
-    if flag == True:
-        global result
-        result.append((x, y))
-        boundary_fill(x + 1, y, b_list)
-        boundary_fill(x - 1, y, b_list)
-        boundary_fill(x, y + 1, b_list)
-        boundary_fill(x, y - 1, b_list)
+class Node:
+    def __init__(self, x = 0.0, dx = 0.0, ymax = 0.0, next = None):
+        self.x = x
+        self.dx = dx
+        self.ymax = ymax
+        self.next = next
+    def getX(self):
+        return self.x
+    def getDx(self):
+        return self.dx
+    def getYmax(self):
+        return self.ymax
+    def getNext(self):
+        return self.next
+    def setX(self, temp):
+        self.x = temp
+    def setDx(self, temp):
+        self.dx = temp
+    def setYmax(self, temp):
+        self.ymax = temp
+    def setNext(self, temp):
+        self.next = temp
     
-def fill(p_list, f_list, b_list):
+def fill(p_list):
     """fill polygon
     
     : param p_list (list of list of int: [[x0, y0], [x1, y1], [x2, y2], ...]) 多边形的顶点坐标列表
-    : param f_list (list of list of int: [[x0, y0]]) where the fill starts
-    : param b_list (list of list of int: [[x0, y0], [x1, y1], [x2, y2], ...]) boundary list
     :return: (list of list of int: [[x_0, y_0], [x_1, y_1], [x_2, y_2], ...]) 绘制结果的像素点坐标列表
     """
-    x, y = f_list[0]
-    global tag
-    for i in range(0, 1001):
-        for j in range(0, 1001):
-            tag.append(0)
-    boundary_fill(x, y, b_list)
+    result = []
+    vertNum = len(p_list)
+    MaxY = 0
+    MinY = 2000
+    for i in range(vertNum):
+        x0, y0 = p_list[i]
+        if y0 < MinY:
+            MinY = y0
+        if y0 > MaxY:
+            MaxY = y0
+    pAET = Node()
+    pAET.setNext(None)
+    pNet = []
+    for i in range(0, MaxY + 1):
+        temp = Node()
+        temp.setDx(0)
+        temp.setX(0)
+        temp.setYmax(0)
+        temp.setNext(None)
+        pNet.append(temp)
+    
+    for i in range(MinY, MaxY + 1):
+        for j in range(0, vertNum):
+            if p_list[j][1] == i:
+                x0, y0 = p_list[j]
+                x1, y1 = p_list[(j - 1 + vertNum) % vertNum]
+                if y1 > y0:
+                    temp = Node()
+                    temp.setX(x0)
+                    temp.setYmax(y1)
+                    temp.setDx(1.0 * (x1 - x0) / (y1 - y0))
+                    temp.setNext(pNet[i].getNext())
+                    pNet[i].setNext(temp)
+                x1, y1 = p_list[(j + 1 + vertNum) % vertNum]
+                if y1 > y0:
+                    temp = Node()
+                    temp.setX(x0)
+                    temp.setYmax(y1)
+                    temp.setDx(1.0 * (x1 - x0) / (y1 - y0))
+                    temp.setNext(pNet[i].getNext())
+                    pNet[i].setNext(temp)
+   
+    for i in range(MinY, MaxY + 1):
+        p = pAET.getNext()
+        while p != None:
+            p.setX(p.getX() + p.getDx())
+            p = p.getNext()
+        
+        tq = pAET
+        p = pAET.getNext()
+        tq.setNext(None)
+        while p != None:
+            while tq.getNext() != None and p.getX() >= tq.getNext().getX():
+                tq = tq.getNext()
+            s = p.getNext()
+            p.setNext(tq.getNext())
+            tq.setNext(p)
+            p = s
+            tq = pAET
+        
+        q = pAET
+        p = q.getNext()
+        while p != None:
+            if p.getYmax() == i:
+                q.setNext(p.getNext())
+                p = q.getNext()
+            else:
+                q = q.getNext()
+                p = q.getNext()
+        
+        p = pNet[i].getNext()
+        q = pAET
+        while p != None:
+            while q.getNext() != None and p.getX() >= q.getNext().getX():
+                q = q.getNext()
+            s = p.getNext()
+            p.setNext(q.getNext())
+            q.setNext(p)          
+            p = s
+            q = pAET
+            
+        p = pAET.getNext()
+        while p != None and p.getNext() != None:
+            j = p.getX()
+            while j <= p.getNext().getX():
+                result.append((int(j), i))
+                j = j + 1
+            p = p.getNext().getNext()
     return result
     
 def draw_ellipse(p_list):

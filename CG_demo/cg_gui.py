@@ -191,7 +191,6 @@ class MyCanvas(QGraphicsView):
             self.main_window.list_widget.setCurrentRow(int(self.selected_id))
         elif self.status == 'fill':
             self.item_dict[self.selected_id].fill = True
-            self.item_dict[self.selected_id].f_list.append((x, y))
         else:
             if self.selected_id != '':
                 self.x0 = x
@@ -270,7 +269,6 @@ class MyItem(QGraphicsItem):
         self.algorithm = algorithm  # 绘制算法，'DDA'、'Bresenham'、'Bezier'、'B-spline'等
         self.selected = False
         self.fill = False
-        self.f_list = []
 
     def paint(self, painter: QPainter, option: QStyleOptionGraphicsItem, widget: Optional[QWidget] = ...) -> None:
         painter.setPen(self.col)
@@ -286,7 +284,7 @@ class MyItem(QGraphicsItem):
             for p in item_pixels:
                 painter.drawPoint(*p)
             if self.fill == True:
-                fill_pixels = alg.fill(self.p_list, self.f_list, item_pixels)
+                fill_pixels = alg.fill(self.p_list)
                 for p in fill_pixels:
                     painter.drawPoint(*p)
             if self.selected:
