@@ -492,3 +492,93 @@ def clip(p_list, x_min, y_min, x_max, y_max, algorithm):
         result.append((0, 0))
         result.append((0, 0))
     return result
+
+class Vector:
+    def __init__(self, x0, y0, x1, y1):
+        self.x0 = x0 * 1.0
+        self.y0 = y0 * 1.0
+        self.x1 = x1 * 1.0
+        self.y1 = y1 * 1.0
+    def getX0(self):
+        return self.x0
+    def getY0(self):
+        return self.y0
+    def getX1(self):
+        return self.x1
+    def getY1(self):
+        return self.y1
+
+def Multi(x, y, x0, y0, x1, y1):
+
+    return ((x0 - x) * (y1 - y) - (x1 - x) * (y0 - y))
+    
+def isInside(x, y, v):
+    if Multi(x, y, v.getX0(), v.getY0(), v.getX1(), v.getY1()) >= 0:
+        return True
+    else:
+        return False
+
+def InterSection(S, p, v):
+    x0, y0 = S
+    x1, y1 = p
+    x2 = v.getX0()
+    y2 = v.getY0()
+    x3 = v.getX1()
+    y3 = v.getY1()
+    
+    t1 = Multi(x0, y0, x3, y3, x2, y2)
+    t2 = Multi(x1, y1, x3, y3, x2, y2)
+    pX = (t1 * x1 - t2 * x0) / (t1 - t2)
+    pY = (t1 * y1 - t2 * y0) / (t1 - t2)
+    return (pX, pY)
+    
+def pclip(p_list, x_min, y_min, x_max, y_max):
+    """多边形裁剪
+
+    :param p_list (list of list of int: [[x0, y0], [x1, y1], [x2, y2], ...]) 多边形的顶点坐标列表
+    :param x_min: 裁剪窗口左上角x坐标
+    :param y_min: 裁剪窗口左上角y坐标
+    :param x_max: 裁剪窗口右下角x坐标
+    :param y_max: 裁剪窗口右下角y坐标
+    :return: (list of list of int: [[x0, y0], [x1, y1], [x2, y2], ...]) 裁剪后多边形的顶点坐标列表
+    """
+    result = []
+    vectors = []
+    cur = []
+    vectors.append(Vector(x_max, y_min, x_max, y_max))
+    vectors.append(Vector(x_max, y_max, x_min, y_max))
+    vectors.append(Vector(x_min, y_max, x_min, y_min))
+    vectors.append(Vector(x_min, y_min, x_max, y_min))
+    
+    pointSize = len(p_list)
+    S = p_list[pointSize - 1]
+    for i in range(0, pointSize):
+        x0, y0 = p_list[i]
+        result.append((x0 * 1.0, y0 * 1.0))
+    
+    for j in range(0, 4):
+        if isInside(S[0], S[1], vectors[j]):
+            flag = False
+        else:
+            flag = True
+        resultSize = len(result)
+        for i in range(0, resultSize):
+            x0, y0 = result[i]
+            if isInside(x0, y0, vectors[j]):
+                if flag:
+                    flag = False
+                    cur.append(InterSection(S, result[i], vectors[j]))
+                cur.append(result[i])  
+            else:
+                if flag == False:
+                    flag = True
+                    cur.append(InterSection(S, result[i], vectors[j]))
+            S = result[i]
+        result = cur
+        cur = []
+    
+    ans = []
+    for i in range(len(result)):
+        x0, y0 = result[i]
+        ans.append((int(x0), int(y0)))
+    return ans

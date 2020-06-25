@@ -121,6 +121,9 @@ class MyCanvas(QGraphicsView):
     def start_polygon_fill(self):
         self.status = 'fill'
         
+    def start_polygon_clip(self):
+        self.status = 'pclip'
+        
     def finish_draw(self):
         self.temp_id = self.main_window.get_id()
 
@@ -223,7 +226,7 @@ class MyCanvas(QGraphicsView):
                 t = t / 30
                 temp_list = alg.scale(self.origin_list, self.x0, self.y0, t)
                 self.item_dict[self.selected_id].p_list = temp_list
-        elif self.status == 'clip':
+        elif self.status == 'clip' or self.status == 'pclip':
             if self.selected_id != '':
                 self.x1 = x
                 self.y1 = y
@@ -243,6 +246,10 @@ class MyCanvas(QGraphicsView):
         elif self.status == 'clip':
             if self.selected_id != '':
                 temp_list = alg.clip(self.origin_list, self.x0, self.y0, self.x1, self.y1, self.temp_algorithm)
+                self.item_dict[self.selected_id].p_list = temp_list
+        elif self.status == 'pclip':
+            if self.selected_id != '':
+                temp_list = alg.pclip(self.origin_list, self.x0, self.y0, self.x1, self.y1)
                 self.item_dict[self.selected_id].p_list = temp_list
         self.updateScene([self.sceneRect()])
         super().mouseReleaseEvent(event)
@@ -401,6 +408,7 @@ class MainWindow(QMainWindow):
         self.btn.clicked.connect(self.on_click)
         select_item_act.triggered.connect(self.select_item_action)
         polygon_fill_act.triggered.connect(self.polygon_fill_action)
+        polygon_clip_act.triggered.connect(self.polygon_clip_action)
         
         # 设置主窗口的布局
         self.hbox_layout = QHBoxLayout()
@@ -542,6 +550,10 @@ class MainWindow(QMainWindow):
     def polygon_fill_action(self):
         self.canvas_widget.start_polygon_fill()
         self.statusBar().showMessage('多边形填充')
+        
+    def polygon_clip_action(self):
+        self.canvas_widget.start_polygon_clip()
+        self.statusBar().showMessage('多边形裁剪')
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
