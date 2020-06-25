@@ -52,6 +52,9 @@ class MyCanvas(QGraphicsView):
         self.y1 = 0
         self.origin_list = []
         
+        self.level = 0
+        self.save = {}
+        
     def select_item(self):
         self.status = 'select'
 
@@ -124,6 +127,26 @@ class MyCanvas(QGraphicsView):
     def start_polygon_clip(self):
         self.status = 'pclip'
         
+    def start_copy(self):
+        self.status = 'copy'
+        if self.selected_id != '':
+            p = self.item_dict[self.selected_id]
+            self.temp_item = MyItem(p.col, p.id, p.item_type, p.p_list, p.algorithm)
+            self.temp_item.id = self.main_window.get_id()
+            self.temp_item.fill = p.fill
+    
+    def save_status(self):
+        self.level += 1
+        
+    def start_undo(self):
+        self.status = 'undo'
+    #    self.start_reset_canvas()
+    #    self.level -= 1
+    #    self.item_dict = self.save[self.level]
+    #    for item in self.item_dict:
+    #        self.scene().addItem(self.item_dict[item])
+    #        self.list_widget.addItem(self.item_dict[item].id)
+        
     def finish_draw(self):
         self.temp_id = self.main_window.get_id()
 
@@ -193,13 +216,21 @@ class MyCanvas(QGraphicsView):
             self.status = ''
             self.main_window.list_widget.setCurrentRow(int(self.selected_id))
         elif self.status == 'fill':
-            self.item_dict[self.selected_id].fill = True
+            if self.selected_id != '':
+                self.item_dict[self.selected_id].fill = True
+        elif self.status == 'copy':
+            if self.selected_id != '':
+                self.scene().addItem(self.temp_item)
+                self.x0 = x
+                self.y0 = y  
+                self.origin_list = self.temp_item.p_list
         else:
             if self.selected_id != '':
                 self.x0 = x
                 self.y0 = y  
                 self.origin_list = self.item_dict[self.selected_id].p_list    
         self.updateScene([self.sceneRect()])
+        #self.save_status()
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event: QMouseEvent) -> None:
@@ -230,7 +261,10 @@ class MyCanvas(QGraphicsView):
             if self.selected_id != '':
                 self.x1 = x
                 self.y1 = y
-            
+        elif self.status == 'copy':
+             if self.selected_id != '':
+                temp_list = alg.translate(self.origin_list, x - self.x0, y - self.y0)
+                self.temp_item.p_list = temp_list
         self.updateScene([self.sceneRect()])
         super().mouseMoveEvent(event)
 
@@ -251,7 +285,14 @@ class MyCanvas(QGraphicsView):
             if self.selected_id != '':
                 temp_list = alg.pclip(self.origin_list, self.x0, self.y0, self.x1, self.y1)
                 self.item_dict[self.selected_id].p_list = temp_list
+        elif self.status == 'copy':
+            if self.selected_id != '':
+                self.item_dict[self.temp_item.id] = self.temp_item
+                self.list_widget.addItem(self.temp_item.id)
+                self.finish_draw()
+                self.clear_selection()
         self.updateScene([self.sceneRect()])
+        #self.save_status()
         super().mouseReleaseEvent(event)
 
 
@@ -385,6 +426,8 @@ class MainWindow(QMainWindow):
         polygon_addition_menu = addition_func_menu.addMenu('多边形')
         polygon_fill_act = polygon_addition_menu.addAction('多边形填充')
         polygon_clip_act = polygon_addition_menu.addAction('多边形裁剪')
+        copy_act = addition_func_menu.addAction('复制粘贴')
+        undo_act = addition_func_menu.addAction('撤销')
         
         # 连接信号和槽函数
         exit_act.triggered.connect(qApp.quit)
@@ -409,6 +452,8 @@ class MainWindow(QMainWindow):
         select_item_act.triggered.connect(self.select_item_action)
         polygon_fill_act.triggered.connect(self.polygon_fill_action)
         polygon_clip_act.triggered.connect(self.polygon_clip_action)
+        copy_act.triggered.connect(self.copy_action)
+        undo_act.triggered.connect(self.undo_action)
         
         # 设置主窗口的布局
         self.hbox_layout = QHBoxLayout()
@@ -554,6 +599,14 @@ class MainWindow(QMainWindow):
     def polygon_clip_action(self):
         self.canvas_widget.start_polygon_clip()
         self.statusBar().showMessage('多边形裁剪')
+    
+    def copy_action(self):
+        self.canvas_widget.start_copy()
+        self.statusBar().showMessage('图元复制粘贴')
+        
+    def undo_action(self):
+        self.canvas_widget.start_undo()
+        self.statusBar().showMessage('撤销操作')
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)

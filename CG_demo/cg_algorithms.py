@@ -509,7 +509,6 @@ class Vector:
         return self.y1
 
 def Multi(x, y, x0, y0, x1, y1):
-
     return ((x0 - x) * (y1 - y) - (x1 - x) * (y0 - y))
     
 def isInside(x, y, v):
