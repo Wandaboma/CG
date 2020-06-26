@@ -135,17 +135,28 @@ class MyCanvas(QGraphicsView):
             self.temp_item.id = self.main_window.get_id()
             self.temp_item.fill = p.fill
     
+    def start_delete(self):
+        self.status = 'delete'
+        if self.selected_id != '':
+            self.scene().removeItem(self.item_dict[self.selected_id])
+            self.list_widget.takeItem(self.list_widget.currentRow())
+            self.updateScene([self.sceneRect()])
+        
     def save_status(self):
         self.level += 1
-        
+        temp = []
+        for item in self.item_dict:
+            temp.append(self.item_dict[item])
+        self.save.append(temp)
+            
     def start_undo(self):
         self.status = 'undo'
-    #    self.start_reset_canvas()
-    #    self.level -= 1
+        self.level -= 1
+        temp = self.save[self.level]
     #    self.item_dict = self.save[self.level]
-    #    for item in self.item_dict:
-    #        self.scene().addItem(self.item_dict[item])
-    #        self.list_widget.addItem(self.item_dict[item].id)
+        for item in temp:
+            self.scene().addItem(self.item_dict[item])
+            self.list_widget.addItem(self.item_dict[item].id)
         
     def finish_draw(self):
         self.temp_id = self.main_window.get_id()
@@ -230,7 +241,6 @@ class MyCanvas(QGraphicsView):
                 self.y0 = y  
                 self.origin_list = self.item_dict[self.selected_id].p_list    
         self.updateScene([self.sceneRect()])
-        #self.save_status()
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event: QMouseEvent) -> None:
@@ -292,7 +302,7 @@ class MyCanvas(QGraphicsView):
                 self.finish_draw()
                 self.clear_selection()
         self.updateScene([self.sceneRect()])
-        #self.save_status()
+        self.save_status()
         super().mouseReleaseEvent(event)
 
 
@@ -428,6 +438,7 @@ class MainWindow(QMainWindow):
         polygon_clip_act = polygon_addition_menu.addAction('多边形裁剪')
         copy_act = addition_func_menu.addAction('复制粘贴')
         undo_act = addition_func_menu.addAction('撤销')
+        delete_act = addition_func_menu.addAction('删除')
         
         # 连接信号和槽函数
         exit_act.triggered.connect(qApp.quit)
@@ -454,6 +465,7 @@ class MainWindow(QMainWindow):
         polygon_clip_act.triggered.connect(self.polygon_clip_action)
         copy_act.triggered.connect(self.copy_action)
         undo_act.triggered.connect(self.undo_action)
+        delete_act.triggered.connect(self.delete_action)
         
         # 设置主窗口的布局
         self.hbox_layout = QHBoxLayout()
@@ -472,8 +484,8 @@ class MainWindow(QMainWindow):
         self.item_cnt = 0
         
     def get_id(self):
-        _id = str(self.item_cnt)
         self.item_cnt += 1
+        _id = str(self.item_cnt)
         return _id
     
     def get_present_id(self):
@@ -518,49 +530,49 @@ class MainWindow(QMainWindow):
         self.canvas_widget.start_save_canvas()
     
     def line_naive_action(self):
-        self.canvas_widget.start_draw_line('Naive', self.get_id())
+        self.canvas_widget.start_draw_line('Naive', self.get_present_id())
         self.statusBar().showMessage('Naive算法绘制线段')
         self.list_widget.clearSelection()
         self.canvas_widget.clear_selection()
 
     def line_dda_action(self):
-        self.canvas_widget.start_draw_line('DDA', self.get_id())
+        self.canvas_widget.start_draw_line('DDA', self.get_present_id())
         self.statusBar().showMessage('DDA算法绘制线段')
         self.list_widget.clearSelection()
         self.canvas_widget.clear_selection()
     
     def line_bresenham_action(self):
-        self.canvas_widget.start_draw_line('Bresenham', self.get_id())
+        self.canvas_widget.start_draw_line('Bresenham', self.get_present_id())
         self.statusBar().showMessage('Bresenham算法绘制线段')
         self.list_widget.clearSelection()
         self.canvas_widget.clear_selection()
         
     def polygon_dda_action(self):
-        self.canvas_widget.start_draw_polygon('DDA', self.get_id())
+        self.canvas_widget.start_draw_polygon('DDA', self.get_present_id())
         self.statusBar().showMessage('DDA算法绘制多边形')
         self.list_widget.clearSelection()
         self.canvas_widget.clear_selection()
         
     def polygon_bresenham_action(self):
-        self.canvas_widget.start_draw_polygon('Bresenham', self.get_id())
+        self.canvas_widget.start_draw_polygon('Bresenham', self.get_present_id())
         self.statusBar().showMessage('Bresenham算法绘制多边形')
         self.list_widget.clearSelection()
         self.canvas_widget.clear_selection()
         
     def ellipse_action(self):
-        self.canvas_widget.start_draw_ellipse(self.get_id())
+        self.canvas_widget.start_draw_ellipse(self.get_present_id())
         self.statusBar().showMessage('绘制椭圆')
         self.list_widget.clearSelection()
         self.canvas_widget.clear_selection()
 
     def curve_bezier_action(self):
-        self.canvas_widget.start_draw_curve('Bezier', self.get_id())
+        self.canvas_widget.start_draw_curve('Bezier', self.get_present_id())
         self.statusBar().showMessage('Bezier算法绘制曲线')
         self.list_widget.clearSelection()
         self.canvas_widget.clear_selection()
     
     def curve_b_spline_action(self):
-        self.canvas_widget.start_draw_curve('B-spline', self.get_id())
+        self.canvas_widget.start_draw_curve('B-spline', self.get_present_id())
         self.statusBar().showMessage('B-spline算法绘制曲线')
         self.list_widget.clearSelection()
         self.canvas_widget.clear_selection()
@@ -607,6 +619,10 @@ class MainWindow(QMainWindow):
     def undo_action(self):
         self.canvas_widget.start_undo()
         self.statusBar().showMessage('撤销操作')
+        
+    def delete_action(self):
+        self.canvas_widget.start_delete()
+        self.statusBar().showMessage('删除图元')
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
