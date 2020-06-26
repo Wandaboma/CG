@@ -53,7 +53,7 @@ class MyCanvas(QGraphicsView):
         self.origin_list = []
         
         self.level = 0
-        self.save = {}
+        self.save = []
         
     def select_item(self):
         self.status = 'select'
@@ -70,8 +70,8 @@ class MyCanvas(QGraphicsView):
         self.list_widget.clear()
         self.item_dict = {}
         self.updateScene([self.sceneRect()])
-        self.selected_id=''
-        self.status=''
+        self.selected_id = ''
+        self.status = ''
         self.temp_item = None
     
     def start_save_canvas(self):
@@ -151,12 +151,26 @@ class MyCanvas(QGraphicsView):
             
     def start_undo(self):
         self.status = 'undo'
+        while len(self.item_dict) > 0:
+            for item in self.item_dict:
+                self.scene().removeItem(self.item_dict[item])
+                del self.item_dict[item]
+                break
+        self.updateScene([self.sceneRect()])
+        self.list_widget.clear()
         self.level -= 1
-        temp = self.save[self.level]
-    #    self.item_dict = self.save[self.level]
+        if self.level == 0:
+            return 
+        temp = self.save[self.level-1]
+        self.item_dict = {}
         for item in temp:
-            self.scene().addItem(self.item_dict[item])
-            self.list_widget.addItem(self.item_dict[item].id)
+            self.item_dict[item.id] = item
+            self.scene().addItem(item)
+            self.list_widget.addItem(item.id)
+            self.updateScene([self.sceneRect()])
+        self.selected_id = ''
+        self.status = ''
+        self.temp_item = None
         
     def finish_draw(self):
         self.temp_id = self.main_window.get_id()
@@ -301,7 +315,8 @@ class MyCanvas(QGraphicsView):
                 self.list_widget.addItem(self.temp_item.id)
                 self.finish_draw()
                 self.clear_selection()
-        self.updateScene([self.sceneRect()])
+        if self.status != 'undo':
+            self.updateScene([self.sceneRect()])
         self.save_status()
         super().mouseReleaseEvent(event)
 
